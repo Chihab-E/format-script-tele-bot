@@ -1,26 +1,28 @@
+import os
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ConversationHandler, ContextTypes
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ConversationHandler, CallbackContext
 
 NAME, PRICE, LINK = range(3)
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.message.reply_text("Welcome! Please enter the name of the product:")
+def start(update: Update, context: CallbackContext) -> int:
+    update.message.reply_text("Welcome! Please enter the name of the product:")
     return NAME
 
-async def name_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+def name_handler(update: Update, context: CallbackContext) -> int:
     context.user_data['product_name'] = update.message.text
-    await update.message.reply_text("Got it! Now, enter the price:")
+    update.message.reply_text("Got it! Now, enter the price:")
     return PRICE
 
-async def price_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+def price_handler(update: Update, context: CallbackContext) -> int:
     context.user_data['price'] = update.message.text
-    await update.message.reply_text("Thanks! Finally, enter the link:")
+    update.message.reply_text("Thanks! Finally, enter the link:")
     return LINK
 
-async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+def link_handler(update: Update, context: CallbackContext) -> int:
     product_name = context.user_data['product_name']
     price = context.user_data['price']
     link = update.message.text
+    
     message = f"""
 🛍 تخفيـــض لـ : "{product_name}"
 
@@ -29,15 +31,17 @@ async def link_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 📍 رابط العملات: 💥💥
 {link}
 """
-    await update.message.reply_text(message)
+    update.message.reply_text(message)
     return ConversationHandler.END
 
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.message.reply_text("Canceled.")
+def cancel(update: Update, context: CallbackContext) -> int:
+    update.message.reply_text("Canceled.")
     return ConversationHandler.END
 
 def main():
-    app = ApplicationBuilder().token("TELETOKEN").build()
+    token = os.getenv("TELETOKEN")
+    app = ApplicationBuilder().token(token).build()
+
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
@@ -47,7 +51,9 @@ def main():
         },
         fallbacks=[CommandHandler('cancel', cancel)],
     )
+
     app.add_handler(conv_handler)
+
     app.run_polling()
 
 if __name__ == '__main__':
