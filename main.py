@@ -22,7 +22,6 @@ def link_handler(update: Update, context: CallbackContext) -> int:
     price = context.user_data['price']
     link = update.message.text
     
-    # Format the message
     message = f"""
 🛍 تخفيـــض لـ : "{product_name}"
 
@@ -31,20 +30,17 @@ def link_handler(update: Update, context: CallbackContext) -> int:
 📍 رابط العملات: 💥💥
 {link}
 """
-    # Send the formatted message
     update.message.reply_text(message)
     return ConversationHandler.END
 
-# Handle cancellation
 def cancel(update: Update, context: CallbackContext) -> int:
     update.message.reply_text("Canceled.")
     return ConversationHandler.END
 
 def main():
-    updater = Updater("TELETOEKN")
+    updater = Updater("TELETOKEN")
     dispatcher = updater.dispatcher
 
-    # Set up conversation handler with states
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
