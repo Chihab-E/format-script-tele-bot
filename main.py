@@ -1,28 +1,18 @@
 import os
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ConversationHandler, CallbackContext
+from dotenv import load_dotenv
+import telebot
 
-NAME, PRICE, LINK = range(3)
+load_dotenv()  
 
-def start(update: Update, context: CallbackContext) -> int:
-    update.message.reply_text("Welcome! Please enter the name of the product:")
-    return NAME
+bot_token = os.getenv('TELETOKEN')
 
-def name_handler(update: Update, context: CallbackContext) -> int:
-    context.user_data['product_name'] = update.message.text
-    update.message.reply_text("Got it! Now, enter the price:")
-    return PRICE
+bot = telebot.TeleBot(bot_token)
 
-def price_handler(update: Update, context: CallbackContext) -> int:
-    context.user_data['price'] = update.message.text
-    update.message.reply_text("Thanks! Finally, enter the link:")
-    return LINK
+def create_promo_message():
+    product_name = input("Enter the name of the product: ")
+    price = input("Enter the price: ")
+    link = input("Enter the link: ")
 
-def link_handler(update: Update, context: CallbackContext) -> int:
-    product_name = context.user_data['product_name']
-    price = context.user_data['price']
-    link = update.message.text
-    
     message = f"""
 🛍 تخفيـــض لـ : "{product_name}"
 
@@ -31,30 +21,12 @@ def link_handler(update: Update, context: CallbackContext) -> int:
 📍 رابط العملات: 💥💥
 {link}
 """
-    update.message.reply_text(message)
-    return ConversationHandler.END
 
-def cancel(update: Update, context: CallbackContext) -> int:
-    update.message.reply_text("Canceled.")
-    return ConversationHandler.END
+    return message
 
-def main():
-    token = os.getenv("TELETOKEN")
-    app = ApplicationBuilder().token(token).build()
+@bot.message_handler(commands=['send'])
+def send_promo(message):
+    promo_message = create_promo_message()
+    bot.send_message(message.chat.id, promo_message)
 
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
-        states={
-            NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, name_handler)],
-            PRICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, price_handler)],
-            LINK: [MessageHandler(filters.TEXT & ~filters.COMMAND, link_handler)],
-        },
-        fallbacks=[CommandHandler('cancel', cancel)],
-    )
-
-    app.add_handler(conv_handler)
-
-    app.run_polling()
-
-if __name__ == '__main__':
-    main()
+bot.infinity_polling()
