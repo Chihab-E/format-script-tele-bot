@@ -1,32 +1,49 @@
 import os
+import re
 from dotenv import load_dotenv
-import telebot
+from telegram import Update
+from telegram.ext import (
+    ApplicationBuilder,
+    ContextTypes,
+    MessageHandler,
+    filters
+)
+from aliexpress_api import AliexpressApi, models
 
-load_dotenv()  
+load_dotenv()
 
-bot_token = os.getenv('TELETOKEN')
+API_KEY = os.getenv("ALIEXPRESS_API_KEY")
+API_SECRET = os.getenv("ALIEXPRESS_API_SECRET")
+TRACKING_ID = os.getenv("ALIEXPRESS_TRACKING_ID", "default")
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
-bot = telebot.TeleBot(bot_token)
+aliexpress = AliexpressApi(API_KEY, API_SECRET, models.Language.EN, models.Currency.USD, TRACKING_ID)
 
-def create_promo_message():
-    product_name = input("Enter the name of the product: ")
-    price = input("Enter the price: ")
-    link = input("Enter the link: ")
+def extract_product_id(text):
+    m = re.search(r'/item/(\d+)\.html', text)
+    return m.group(1) if m else None
 
-    message = f"""
-🛍 تخفيـــض لـ : "{product_name}"
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip()
+    
+    if not text:
+        await update.message.reply_text("Please send a valid AliExpress product URL or ID")
+        return
+    
+    try:
+        res = aliexpress.get_affiliate_links(text)
+        if res and len(res) > 0:
+            link = res[0].promotion_link
+            await update.message.reply_text(f"🔗 Here's your affiliate link:\n{link}")
+        else:
+            await update.message.reply_text("❌ No affiliate link was generated")
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error: {str(e)}")
 
-💵 السعر : "{price}"$ ☄️☄️⚡️
+def main():
+    application = ApplicationBuilder().token(BOT_TOKEN).build()
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    application.run_polling()
 
-📍 رابط العملات: 💥💥
-{link}
-"""
-
-    return message
-
-@bot.message_handler(commands=['send'])
-def send_promo(message):
-    promo_message = create_promo_message()
-    bot.send_message(message.chat.id, promo_message)
-
-bot.infinity_polling()
+if __name__ == "__main__":
+    main()
